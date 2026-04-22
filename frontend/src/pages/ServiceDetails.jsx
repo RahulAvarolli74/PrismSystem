@@ -6,17 +6,18 @@ import SectionHeader from '../components/ui/SectionHeader'
 import StatusBadge from '../components/ui/StatusBadge'
 import MetricCard from '../components/ui/MetricCard'
 import MiniTrendChart from '../components/charts/MiniTrendChart'
-import { mockOpsData, getServiceById } from '../data/mockOpsData'
+import { useOperationsData } from '../hooks/useOperationsData'
 import { formatDateTime } from '../utils/formatters'
 
 export default function ServiceDetails() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
+  const { getServiceById, alerts } = useOperationsData()
   const service = getServiceById(decodeURIComponent(id))
 
   const recentAlerts = useMemo(
-    () => mockOpsData.alerts.filter((alert) => alert.service === decodeURIComponent(id)).slice(0, 5),
-    [id]
+    () => alerts.filter((alert) => alert.service === decodeURIComponent(id)).slice(0, 5),
+    [alerts, id]
   )
 
   if (!service) {

@@ -19,7 +19,7 @@ import {
 import TopNav from '../components/layout/TopNav'
 import GlassCard from '../components/ui/GlassCard'
 import StatusBadge from '../components/ui/StatusBadge'
-import { mockOpsData } from '../data/mockOpsData'
+import { useOperationsData } from '../hooks/useOperationsData'
 
 const sectionMotion = {
   initial: { opacity: 0, y: 28 },
@@ -67,7 +67,8 @@ const pipeline = [
 ]
 
 export default function Landing() {
-  const currentRisk = Math.round(mockOpsData.dashboardTrend[mockOpsData.dashboardTrend.length - 1]?.risk || 0)
+  const { dashboardTrend, services, latestSnapshot } = useOperationsData()
+  const currentRisk = Math.round(dashboardTrend[dashboardTrend.length - 1]?.risk || 0)
 
   return (
     <div className="relative min-h-screen overflow-x-hidden pb-14 text-[var(--text-primary)]">
@@ -112,7 +113,7 @@ export default function Landing() {
               </div>
 
               <div className="mt-10 grid gap-4 sm:grid-cols-3">
-                {mockOpsData.dashboardTrend.slice(0, 3).map((entry) => (
+              {dashboardTrend.slice(0, 3).map((entry) => (
                   <GlassCard key={entry.label} className="glass-panel-strong rounded-[24px] p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--text-muted)]">{entry.label}</p>
                     <div className="mt-2 font-mono text-3xl font-bold text-[var(--text-primary)]">{entry.risk}%</div>
@@ -134,11 +135,11 @@ export default function Landing() {
                 <div className="mt-6 grid grid-cols-2 gap-3">
                   <div className="rounded-2xl border border-[var(--border-subtle)] bg-[rgba(255,255,255,0.03)] p-4">
                     <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">Services</p>
-                    <p className="mt-2 font-mono text-3xl font-bold text-[var(--text-primary)]">44</p>
+                    <p className="mt-2 font-mono text-3xl font-bold text-[var(--text-primary)]">{services.length}</p>
                   </div>
                   <div className="rounded-2xl border border-[var(--border-subtle)] bg-[rgba(255,255,255,0.03)] p-4">
                     <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">Sequences</p>
-                    <p className="mt-2 font-mono text-3xl font-bold text-[var(--text-primary)]">213</p>
+                    <p className="mt-2 font-mono text-3xl font-bold text-[var(--text-primary)]">{latestSnapshot.length}</p>
                   </div>
                   <div className="rounded-2xl border border-[var(--border-subtle)] bg-[rgba(255,255,255,0.03)] p-4">
                     <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">Recall</p>

@@ -5,8 +5,9 @@ import GlassCard from '../components/ui/GlassCard'
 import SectionHeader from '../components/ui/SectionHeader'
 import StatusBadge from '../components/ui/StatusBadge'
 import MiniTrendChart from '../components/charts/MiniTrendChart'
-import { mockOpsData } from '../data/mockOpsData'
 import { Link } from 'react-router-dom'
+import { useTheme } from '../context/ThemeContext'
+import { useOperationsData } from '../hooks/useOperationsData'
 
 function buildPositions(services) {
   const ordered = [...services].sort((left, right) => right.failure_probability - left.failure_probability)
@@ -18,24 +19,26 @@ function buildPositions(services) {
 }
 
 export default function DependencyGraph() {
+  const { services, dependencyMap, getServiceById } = useOperationsData()
   const containerRef = useRef(null)
   const cyRef = useRef(null)
+  const { theme } = useTheme()
   const [filter, setFilter] = useState('all')
-  const [selectedId, setSelectedId] = useState(mockOpsData.services.find((service) => service.status !== 'healthy')?.id || mockOpsData.services[0].id)
+  const [selectedId, setSelectedId] = useState(services.find((service) => service.status !== 'healthy')?.id || services[0]?.id || '')
 
   const visibleServices = useMemo(() => {
     if (filter === 'failures') {
-      return mockOpsData.services.filter((service) => service.status === 'critical')
+      return services.filter((service) => service.status === 'critical')
     }
 
     if (filter === 'at-risk') {
-      return mockOpsData.services.filter((service) => service.status !== 'healthy')
+      return services.filter((service) => service.status !== 'healthy')
     }
 
-    return mockOpsData.services
-  }, [filter])
+    return services
+  }, [filter, services])
 
-  const selectedService = mockOpsData.services.find((service) => service.id === selectedId) || visibleServices[0]
+  const selectedService = getServiceById(selectedId) || visibleServices[0]
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -57,7 +60,7 @@ export default function DependencyGraph() {
         position: { x: service.x, y: service.y },
         classes: service.status,
       })),
-      ...Object.entries(mockOpsData.dependencyMap)
+      ...Object.entries(dependencyMap)
         .flatMap(([source, targets]) => targets.map((target) => ({ source, target })))
         .filter(({ source, target }) => visibleIds.has(source) && visibleIds.has(target))
         .map((edge) => ({
@@ -111,11 +114,13 @@ export default function DependencyGraph() {
         {
           selector: 'edge',
           style: {
-            width: 2,
+            width: 2.8,
             'curve-style': 'bezier',
             'target-arrow-shape': 'triangle',
-            'target-arrow-color': 'rgba(255,255,255,0.38)',
-            'line-color': 'rgba(255,255,255,0.24)',
+            'target-arrow-color': theme === 'light' ? 'rgba(51,65,85,0.88)' : 'rgba(226,232,240,0.82)',
+            'line-color': theme === 'light' ? 'rgba(71,85,105,0.65)' : 'rgba(226,232,240,0.44)',
+            'line-opacity': 0.95,
+            'target-arrow-fill': 'filled',
           },
         },
         {
@@ -143,7 +148,7 @@ export default function DependencyGraph() {
       cy.destroy()
       cyRef.current = null
     }
-  }, [visibleServices])
+  }, [visibleServices, theme])
 
   const selectedHistory = selectedService?.history || []
 

@@ -3,25 +3,32 @@ import { Pause, Play, Rewind } from 'lucide-react'
 import GlassCard from '../components/ui/GlassCard'
 import SectionHeader from '../components/ui/SectionHeader'
 import StatusBadge from '../components/ui/StatusBadge'
-import { mockOpsData } from '../data/mockOpsData'
+import { useOperationsData } from '../hooks/useOperationsData'
 
 export default function Timeline() {
+  const { timeline } = useOperationsData()
   const [playing, setPlaying] = useState(true)
   const [activeIndex, setActiveIndex] = useState(0)
 
   useEffect(() => {
-    if (!playing) {
+    if (!playing || timeline.length === 0) {
       return undefined
     }
 
     const timer = window.setInterval(() => {
-      setActiveIndex((current) => (current + 1) % mockOpsData.timeline.length)
+      setActiveIndex((current) => (current + 1) % timeline.length)
     }, 1800)
 
     return () => window.clearInterval(timer)
-  }, [playing])
+  }, [playing, timeline.length])
 
-  const activeFrame = mockOpsData.timeline[activeIndex]
+  useEffect(() => {
+    if (activeIndex >= timeline.length) {
+      setActiveIndex(0)
+    }
+  }, [activeIndex, timeline.length])
+
+  const activeFrame = timeline[activeIndex] || timeline[0] || { failing: [], snapshot: [], label: 't1', atRisk: [] }
   const currentSnapshot = useMemo(() => activeFrame.snapshot, [activeFrame])
 
   return (
@@ -55,7 +62,7 @@ export default function Timeline() {
 
       <GlassCard className="rounded-[30px] p-6" contentClassName="flex h-full flex-col gap-5">
         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-          {mockOpsData.timeline.map((frame, index) => (
+          {timeline.map((frame, index) => (
             <button
               key={frame.label}
               type="button"
@@ -105,7 +112,7 @@ export default function Timeline() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--text-muted)]">Timeline status grid</p>
-                <h3 className="mt-2 text-2xl font-bold text-[var(--text-primary)]">All 44 services at {activeFrame.label}</h3>
+                <h3 className="mt-2 text-2xl font-bold text-[var(--text-primary)]">All {currentSnapshot.length} services at {activeFrame.label}</h3>
               </div>
               <div className="rounded-full border border-[var(--border-subtle)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--text-secondary)]">
                 auto-advance {playing ? 'on' : 'off'}

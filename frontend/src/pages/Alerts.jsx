@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { BellRing, CheckCheck, Filter, ShieldAlert, Trash2 } from 'lucide-react'
 import GlassCard from '../components/ui/GlassCard'
 import SectionHeader from '../components/ui/SectionHeader'
 import StatusBadge from '../components/ui/StatusBadge'
-import { mockOpsData } from '../data/mockOpsData'
+import { useOperationsData } from '../hooks/useOperationsData'
 import { formatDateTime } from '../utils/formatters'
 
 const severityColors = {
@@ -13,8 +13,13 @@ const severityColors = {
 }
 
 export default function Alerts() {
+  const { alerts } = useOperationsData()
   const [severity, setSeverity] = useState('all')
-  const [rows, setRows] = useState(() => mockOpsData.alerts.map((alert) => ({ ...alert })))
+  const [rows, setRows] = useState(() => alerts.map((alert) => ({ ...alert })))
+
+  useEffect(() => {
+    setRows(alerts.map((alert) => ({ ...alert })))
+  }, [alerts])
 
   const filteredRows = useMemo(() => rows.filter((row) => severity === 'all' || row.severity === severity), [rows, severity])
 

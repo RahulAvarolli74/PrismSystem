@@ -2,8 +2,7 @@ import React, { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { Menu, PanelLeftClose, Shield } from 'lucide-react'
 import ThemeToggle from '../common/ThemeToggle'
-import { mockOpsData } from '../../data/mockOpsData'
-import { getStatusLabel } from '../../data/mockOpsData'
+import { useOperationsData } from '../../hooks/useOperationsData'
 
 const navItems = [
   { label: 'Home', to: '/' },
@@ -34,6 +33,7 @@ function NavPill({ to, label, end = false, onClick }) {
 
 export default function TopNav() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const { services, getStatusLabel } = useOperationsData()
 
   return (
     <>
@@ -105,7 +105,7 @@ export default function TopNav() {
                 Current posture
               </div>
               <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
-                {getStatusLabel(mockOpsData.latestSnapshot?.find((entry) => entry.status !== 'healthy')?.status || 'healthy')} across the latest telemetry frame.
+                {getStatusLabel(services.find((entry) => entry.status !== 'healthy')?.status || 'healthy')} across the latest telemetry frame.
               </p>
             </div>
           </aside>

@@ -1,8 +1,11 @@
 import React from 'react'
 import { Outlet } from 'react-router-dom'
 import TopNav from './TopNav'
+import { useDashboardBootstrap } from '../../hooks/useDashboardBootstrap'
 
 export default function AppShell() {
+  useDashboardBootstrap()
+
   return (
     <div className="relative min-h-screen text-[var(--text-primary)]">
       <div className="pointer-events-none absolute inset-0 dashboard-grid opacity-[0.26]" />

@@ -6,7 +6,7 @@ import MetricCard from '../components/ui/MetricCard'
 import MetricTrendChart from '../components/charts/MetricTrendChart'
 import SectionHeader from '../components/ui/SectionHeader'
 import StatusBadge from '../components/ui/StatusBadge'
-import { mockOpsData } from '../data/mockOpsData'
+import { useOperationsData } from '../hooks/useOperationsData'
 
 function CircularGauge({ value }) {
   const radius = 54
@@ -44,11 +44,9 @@ function CircularGauge({ value }) {
 }
 
 export default function Dashboard() {
-  const services = mockOpsData.services
-  const trend = mockOpsData.dashboardTrend
-  const latestFrame = mockOpsData.latestSnapshot
+  const { services, dashboardTrend: trend, latestSnapshot: latestFrame, alerts, modelMetrics } = useOperationsData()
   const currentRisk = Math.round(trend[trend.length - 1]?.risk || 0)
-  const healthScore = Math.max(0, Math.round(100 - (latestFrame.reduce((sum, entry) => sum + entry.metrics.failure_probability, 0) / latestFrame.length) * 100))
+  const healthScore = Math.max(0, Math.round(100 - ((latestFrame.reduce((sum, entry) => sum + (entry.metrics?.failure_probability || 0), 0) / Math.max(latestFrame.length, 1)) * 100)))
   const topServices = [...services].sort((left, right) => right.failure_probability - left.failure_probability).slice(0, 5)
 
   const severityCounts = services.reduce((accumulator, service) => {
@@ -106,7 +104,7 @@ export default function Dashboard() {
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard title="Active services" value={services.length} change="44 monitored" hint="service inventory" icon={<Users size={18} />} tone="neutral" />
-          <MetricCard title="Current alerts" value={mockOpsData.alerts.filter((alert) => alert.status === 'open').length} change="Live feed" hint="open alert queue" icon={<AlertTriangle size={18} />} tone="warning" />
+          <MetricCard title="Current alerts" value={alerts.filter((alert) => alert.status === 'open').length} change="Live feed" hint="open alert queue" icon={<AlertTriangle size={18} />} tone="warning" />
           <MetricCard title="Predicted failures" value={topServices.filter((service) => service.failure_probability >= 0.5).length} change="top risk set" hint="failure forecast" icon={<BrainCircuit size={18} />} tone="critical" />
           <MetricCard title="Avg latency" value={`${Math.round(latestFrame.reduce((sum, entry) => sum + entry.metrics.latency, 0) / latestFrame.length)} ms`} change="current frame" hint="dependency pressure" icon={<TimerReset size={18} />} tone="accent" />
         </div>
