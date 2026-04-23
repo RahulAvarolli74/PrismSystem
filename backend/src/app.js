@@ -57,9 +57,26 @@ app.use(loggerMiddleware);
 app.use(metricsMiddleware);
 
 // Rate limiting
+const shouldSkipRateLimit = (req) => {
+  if (!env.isDev) {
+    return false;
+  }
+
+  const requestPath = req.originalUrl || req.path || '';
+
+  // In local/demo mode, high-frequency telemetry + dashboard polling should not be throttled.
+  return (
+    requestPath.startsWith('/api/v1/telemetry') ||
+    requestPath.startsWith('/api/v1/dashboard') ||
+    requestPath.startsWith('/api/v1/services') ||
+    requestPath.startsWith('/api/v1/predictions')
+  );
+};
+
 const limiter = rateLimit({
   windowMs: env.rateLimit.windowMs,
   max: env.rateLimit.maxRequests,
+  skip: shouldSkipRateLimit,
   message: {
     success: false,
     message: CONSTANTS.MESSAGES.RATE_LIMIT_EXCEEDED,

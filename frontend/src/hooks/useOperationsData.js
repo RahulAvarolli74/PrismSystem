@@ -161,7 +161,7 @@ function buildServiceEntry({
 
 function buildLiveTimeline(services, predictions) {
   if (!Array.isArray(services) || services.length === 0) {
-    return mockOpsData.timeline
+    return []
   }
 
   const orderedPredictions = [...(predictions || [])].sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime())
@@ -214,7 +214,7 @@ function buildLiveTimeline(services, predictions) {
 
 function buildDashboardTrend(timeline = []) {
   if (!Array.isArray(timeline) || timeline.length === 0) {
-    return mockOpsData.dashboardTrend
+    return []
   }
 
   return timeline.map((frame, index) => {
@@ -316,21 +316,30 @@ export function useOperationsData() {
       }
     }
 
-    const dependencyMap = buildDependencyMap(dependencyGraph, mockOpsData.dependencyMap)
+    // Strict live mode: no mock fallback blending once live data exists.
+    const dependencyMap = buildDependencyMap(dependencyGraph, {})
     const reverseDependencyMap = buildReverseDependencyMap(dependencyMap)
     const liveSnapshots = serviceSnapshots.map((snapshot) => ({
       detail: snapshot,
     }))
     const healthByName = new Map((summary?.serviceHealth || []).map((entry) => [entry.name, entry]))
-    const liveServices = (services.length > 0 ? services : mockOpsData.services).map((service, index) => {
+
+    const liveServiceSeeds =
+      services.length > 0
+        ? services
+        : (summary?.serviceHealth || []).map((entry) => ({
+            name: entry.name,
+            telemetryCount: entry.recentTelemetry || 0,
+          }))
+
+    const liveServices = liveServiceSeeds.map((service, index) => {
       const name = service.name || service.id
-      const fallbackService = mockOpsData.services.find((entry) => entry.name === name || entry.id === name)
       return buildServiceEntry({
         name,
         index,
         health: healthByName.get(name),
         telemetryCount: service.telemetryCount || service._count?.telemetry || 0,
-        fallbackService,
+        fallbackService: null,
         liveSnapshots,
         dependencyMap,
         reverseDependencyMap,
@@ -340,11 +349,10 @@ export function useOperationsData() {
 
     const timeline = buildLiveTimeline(liveServices, predictions)
     const dashboardTrend = buildDashboardTrend(timeline)
-    const latestSnapshot = timeline[timeline.length - 1]?.snapshot || mockOpsData.latestSnapshot
+    const latestSnapshot = timeline[timeline.length - 1]?.snapshot || []
     const liveAlerts = buildAlerts(summary, alerts, liveServices)
 
     return {
-      ...mockOpsData,
       source: 'live',
       connectionStatus,
       summary,
@@ -354,9 +362,9 @@ export function useOperationsData() {
       dashboardTrend,
       latestSnapshot,
       alerts: liveAlerts,
-      modelMetrics: mockOpsData.modelMetrics,
+      modelMetrics: [],
       serviceSeries: buildServiceSeries(liveServices),
-      getServiceById: (id) => liveServices.find((service) => service.id === id || service.name === id) || getMockServiceById(id),
+      getServiceById: (id) => liveServices.find((service) => service.id === id || service.name === id) || null,
       getStatusLabel: (status) => getMockStatusLabel(status),
     }
   }, [alerts, connectionStatus, dependencyGraph, predictions, serviceSnapshots, services, summary])

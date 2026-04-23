@@ -145,6 +145,33 @@ services:
       - prism_network
 
   # ═══════════════════════════════════════════════════
+  # Automatic Live Telemetry Generator
+  # ═══════════════════════════════════════════════════
+  data-generator:
+    image: node:20-alpine
+    container_name: prism_data_generator
+    working_dir: /app/backend
+    volumes:
+      - ./:/app
+    environment:
+      BACKEND_URL: http://backend:3001
+    depends_on:
+      - backend
+    command:
+      - sh
+      - -c
+      - |
+        until wget -qO- http://backend:3001/health > /dev/null; do
+          echo "[data-generator] waiting for backend health..."
+          sleep 3
+        done
+        echo "[data-generator] backend healthy, starting telemetry stream"
+        node scripts/testDirectTelemetry.js
+    restart: unless-stopped
+    networks:
+      - prism_network
+
+  # ═══════════════════════════════════════════════════
   # Prometheus Monitoring
   # ═══════════════════════════════════════════════════
   prometheus:

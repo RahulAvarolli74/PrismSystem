@@ -12,6 +12,7 @@ export function useDashboardBootstrap() {
 
   const socketRef = useRef(null)
   const refreshTimerRef = useRef(null)
+  const pollingTimerRef = useRef(null)
   const selectedServiceRef = useRef(selectedServiceName)
 
   useEffect(() => {
@@ -44,6 +45,11 @@ export function useDashboardBootstrap() {
       }, 450)
     }
 
+    // Polling fallback ensures recovery after temporary API throttling or missed socket events.
+    pollingTimerRef.current = window.setInterval(() => {
+      queueRefresh()
+    }, 8000)
+
     socket.on('connect', () => setConnectionStatus('live'))
     socket.on('disconnect', () => setConnectionStatus('offline'))
     socket.on('connect_error', () => setConnectionStatus('reconnecting'))
@@ -73,6 +79,10 @@ export function useDashboardBootstrap() {
 
       if (refreshTimerRef.current) {
         window.clearTimeout(refreshTimerRef.current)
+      }
+
+      if (pollingTimerRef.current) {
+        window.clearInterval(pollingTimerRef.current)
       }
 
       if (socketRef.current) {
