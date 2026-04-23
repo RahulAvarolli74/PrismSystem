@@ -223,11 +223,11 @@ export default function Dashboard() {
                 <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <p className="text-[var(--text-muted)]">CPU</p>
-                    <p className="mt-1 font-mono font-semibold text-[var(--text-primary)]">{entry.metrics.cpu}%</p>
+                    <p className="mt-1 font-mono font-semibold text-[var(--text-primary)]">{Number(entry.metrics.cpu || 0).toFixed(1)}%</p>
                   </div>
                   <div>
                     <p className="text-[var(--text-muted)]">Latency</p>
-                    <p className="mt-1 font-mono font-semibold text-[var(--text-primary)]">{entry.metrics.latency} ms</p>
+                    <p className="mt-1 font-mono font-semibold text-[var(--text-primary)]">{Math.round(Number(entry.metrics.latency || 0))} ms</p>
                   </div>
                 </div>
               </div>

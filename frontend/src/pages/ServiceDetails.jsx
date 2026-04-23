@@ -44,6 +44,12 @@ export default function ServiceDetails() {
 
   const status = service.status
   const current = service.history[service.history.length - 1]
+  const roundedCpu = Number(service.cpu || 0).toFixed(1)
+  const roundedMemory = Number(service.memory || 0).toFixed(1)
+  const roundedLatency = Math.round(Number(service.latency || 0))
+  const roundedCurrentCpu = Number(current?.metrics?.cpu || 0).toFixed(1)
+  const roundedCurrentMemory = Number(current?.metrics?.memory || 0).toFixed(1)
+  const roundedCurrentLatency = Math.round(Number(current?.metrics?.latency || 0))
 
   return (
     <div className="space-y-6 pb-8">
@@ -74,9 +80,9 @@ export default function ServiceDetails() {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard title="Status" value={status.toUpperCase()} change={`${Math.round(service.failure_probability * 100)}% predicted risk`} hint="current posture" icon={<Activity size={18} />} tone={status === 'critical' ? 'critical' : status === 'warning' ? 'warning' : 'success'} />
-        <MetricCard title="CPU" value={`${service.cpu}%`} change="latest frame" hint="utilization" icon={<Cpu size={18} />} tone="neutral" />
-        <MetricCard title="Memory" value={`${service.memory}%`} change="latest frame" hint="footprint" icon={<MemoryStick size={18} />} tone="accent" />
-        <MetricCard title="Latency" value={`${service.latency} ms`} change="latest frame" hint="response time" icon={<Waves size={18} />} tone={service.latency >= 500 ? 'critical' : 'warning'} />
+        <MetricCard title="CPU" value={`${roundedCpu}%`} change="latest frame" hint="utilization" icon={<Cpu size={18} />} tone="neutral" />
+        <MetricCard title="Memory" value={`${roundedMemory}%`} change="latest frame" hint="footprint" icon={<MemoryStick size={18} />} tone="accent" />
+        <MetricCard title="Latency" value={`${roundedLatency} ms`} change="latest frame" hint="response time" icon={<Waves size={18} />} tone={roundedLatency >= 500 ? 'critical' : 'warning'} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
@@ -90,9 +96,9 @@ export default function ServiceDetails() {
           </div>
 
           <div className="grid gap-4 xl:grid-cols-2">
-            <MiniTrendChart title="CPU" value={current.metrics.cpu} data={service.history.map((entry) => ({ label: entry.label, value: entry.metrics.cpu }))} dataKey="value" color="#f97316" unit="%" />
-            <MiniTrendChart title="Memory" value={current.metrics.memory} data={service.history.map((entry) => ({ label: entry.label, value: entry.metrics.memory }))} dataKey="value" color="#ff3b5c" unit="%" />
-            <MiniTrendChart title="Latency" value={current.metrics.latency} data={service.history.map((entry) => ({ label: entry.label, value: entry.metrics.latency }))} dataKey="value" color="#f59e0b" unit=" ms" />
+            <MiniTrendChart title="CPU" value={roundedCurrentCpu} data={service.history.map((entry) => ({ label: entry.label, value: Number(Number(entry.metrics.cpu || 0).toFixed(1)) }))} dataKey="value" color="#f97316" unit="%" />
+            <MiniTrendChart title="Memory" value={roundedCurrentMemory} data={service.history.map((entry) => ({ label: entry.label, value: Number(Number(entry.metrics.memory || 0).toFixed(1)) }))} dataKey="value" color="#ff3b5c" unit="%" />
+            <MiniTrendChart title="Latency" value={roundedCurrentLatency} data={service.history.map((entry) => ({ label: entry.label, value: Math.round(Number(entry.metrics.latency || 0)) }))} dataKey="value" color="#f59e0b" unit=" ms" />
             <MiniTrendChart title="Error rate" value={Math.round(current.metrics.error_rate * 1000) / 10} data={service.history.map((entry) => ({ label: entry.label, value: Number((entry.metrics.error_rate * 100).toFixed(1)) }))} dataKey="value" color="#60a5fa" unit="%" />
           </div>
         </GlassCard>

@@ -39,6 +39,9 @@ export default function DependencyGraph() {
   }, [filter, services])
 
   const selectedService = getServiceById(selectedId) || visibleServices[0]
+  const roundedSelectedCpu = Number(selectedService?.cpu || 0).toFixed(1)
+  const roundedSelectedMemory = Number(selectedService?.memory || 0).toFixed(1)
+  const roundedSelectedLatency = Math.round(Number(selectedService?.latency || 0))
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -221,18 +224,18 @@ export default function DependencyGraph() {
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-[22px] border border-[var(--border-subtle)] bg-[rgba(255,255,255,0.03)] p-4">
                 <p className="text-xs uppercase tracking-[0.24em] text-[var(--text-muted)]">CPU</p>
-                <p className="mt-2 font-mono text-3xl font-bold text-[var(--text-primary)]">{selectedService?.cpu}%</p>
+                <p className="mt-2 font-mono text-3xl font-bold text-[var(--text-primary)]">{roundedSelectedCpu}%</p>
               </div>
               <div className="rounded-[22px] border border-[var(--border-subtle)] bg-[rgba(255,255,255,0.03)] p-4">
                 <p className="text-xs uppercase tracking-[0.24em] text-[var(--text-muted)]">Memory</p>
-                <p className="mt-2 font-mono text-3xl font-bold text-[var(--text-primary)]">{selectedService?.memory}%</p>
+                <p className="mt-2 font-mono text-3xl font-bold text-[var(--text-primary)]">{roundedSelectedMemory}%</p>
               </div>
             </div>
           </GlassCard>
 
           <GlassCard className="rounded-[30px] p-6" contentClassName="space-y-4">
             <MiniTrendChart title="Failure probability" value={Math.round((selectedService?.failure_probability || 0) * 100)} data={selectedHistory.map((entry) => ({ label: entry.label, value: Math.round(entry.metrics.failure_probability * 100) }))} dataKey="value" color="#ff3b5c" unit="%" />
-            <MiniTrendChart title="Latency" value={selectedService?.latency || 0} data={selectedHistory.map((entry) => ({ label: entry.label, value: entry.metrics.latency }))} dataKey="value" color="#f97316" unit=" ms" />
+            <MiniTrendChart title="Latency" value={roundedSelectedLatency} data={selectedHistory.map((entry) => ({ label: entry.label, value: Math.round(Number(entry.metrics.latency || 0)) }))} dataKey="value" color="#f97316" unit=" ms" />
           </GlassCard>
 
           <GlassCard className="rounded-[30px] p-6" contentClassName="space-y-4">

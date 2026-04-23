@@ -30,9 +30,9 @@ export default function Metrics() {
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <MetricCard title="Recall" value="0.57" change="High coverage" hint="catch more failures" icon={<Target size={18} />} tone="critical" />
-        <MetricCard title="F1" value="0.37" change="Balanced risk" hint="precision-recall compromise" icon={<CircleGauge size={18} />} tone="warning" />
-        <MetricCard title="Precision" value="0.25" change="Sensitive net" hint="model favors early warning" icon={<BarChart3 size={18} />} tone="accent" />
+        <MetricCard title="Recall" value={mockOpsData.modelMetrics.recall.toFixed(2)} change="High coverage" hint="catch more failures" icon={<Target size={18} />} tone="critical" />
+        <MetricCard title="F1" value={mockOpsData.modelMetrics.f1.toFixed(2)} change="Balanced risk" hint="precision-recall compromise" icon={<CircleGauge size={18} />} tone="warning" />
+        <MetricCard title="Precision" value={mockOpsData.modelMetrics.precision.toFixed(2)} change="Sensitive net" hint="model favors early warning" icon={<BarChart3 size={18} />} tone="accent" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">

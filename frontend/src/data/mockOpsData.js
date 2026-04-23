@@ -92,7 +92,50 @@ const dependencyMap = {
   'incident-service': ['logging-service', 'message-broker'],
 }
 
-const timelineLabels = ['t1', 't2', 't3', 't4', 't5', 't6']
+const reverseDependencyMap = Object.entries(dependencyMap).reduce((accumulator, [source, targets]) => {
+  targets.forEach((target) => {
+    if (!accumulator[target]) {
+      accumulator[target] = []
+    }
+
+    accumulator[target].push(source)
+  })
+
+  return accumulator
+}, {})
+
+const timelineLabels = Array.from({ length: 24 }, (_, index) => `t${index + 1}`)
+
+const incidentWaves = [
+  {
+    id: 'payment-cascade',
+    start: 3,
+    duration: 6,
+    roots: ['payment-service', 'db-proxy'],
+    maxImpact: 0.84,
+  },
+  {
+    id: 'edge-auth-spike',
+    start: 9,
+    duration: 5,
+    roots: ['edge-router', 'auth-service'],
+    maxImpact: 0.72,
+  },
+  {
+    id: 'catalog-latency-burst',
+    start: 14,
+    duration: 7,
+    roots: ['catalog-service', 'search-service', 'recommendation-service'],
+    maxImpact: 0.78,
+  },
+  {
+    id: 'telemetry-backpressure',
+    start: 19,
+    duration: 5,
+    roots: ['telemetry-ingestor', 'trace-collector'],
+    maxImpact: 0.67,
+  },
+]
 
 const serviceSummaries = {
   'api-gateway': 'Front-door traffic mesh with policy enforcement and request shaping.',
@@ -164,39 +207,124 @@ function buildMetric(base, spread, stepIndex, index, severityBoost) {
   return clamp(base + wobble + severityBoost, 0, 100)
 }
 
+function buildBlastRadius(roots, maxDepth = 2) {
+  const queue = roots.map((root) => ({ name: root, depth: 0 }))
+  const depthByService = new Map()
+
+  while (queue.length) {
+    const current = queue.shift()
+
+    if (depthByService.has(current.name) && depthByService.get(current.name) <= current.depth) {
+      continue
+    }
+
+    depthByService.set(current.name, current.depth)
+
+    if (current.depth >= maxDepth) {
+      continue
+    }
+
+    const neighbours = [
+      ...(dependencyMap[current.name] || []),
+      ...(reverseDependencyMap[current.name] || []),
+    ]
+
+    neighbours.forEach((serviceName) => {
+      queue.push({ name: serviceName, depth: current.depth + 1 })
+    })
+  }
+
+  return depthByService
+}
+
+function getWaveIntensity(stepIndex, wave) {
+  const end = wave.start + wave.duration - 1
+
+  if (stepIndex < wave.start || stepIndex > end) {
+    return 0
+  }
+
+  const relative = wave.duration === 1 ? 1 : (stepIndex - wave.start) / (wave.duration - 1)
+  const triangularPeak = 1 - Math.abs(relative * 2 - 1)
+  return triangularPeak * wave.maxImpact
+}
+
 function createServiceSnapshots() {
   const serviceHistory = Object.fromEntries(serviceNames.map((name) => [name, []]))
   const timeline = []
 
   timelineLabels.forEach((label, stepIndex) => {
-    const timestamp = new Date(Date.UTC(2026, 3, 20, 8 + stepIndex, stepIndex * 9, 0)).toISOString()
-    const ranking = serviceNames
-      .map((name, index) => ({ name, index, score: buildScore(name, index, stepIndex) }))
-      .sort((left, right) => right.score - left.score)
+    const timestamp = new Date(Date.UTC(2026, 3, 20, 8 + stepIndex, (stepIndex * 11) % 60, 0)).toISOString()
 
-    const critical = new Set(ranking.slice(0, 3).map((entry) => entry.name))
-    const warning = new Set(ranking.slice(3, 9).map((entry) => entry.name))
+    const incidentPressure = new Map()
+    let maxWaveIntensity = 0
+
+    incidentWaves.forEach((wave) => {
+      const intensity = getWaveIntensity(stepIndex, wave)
+
+      if (intensity <= 0) {
+        return
+      }
+
+      maxWaveIntensity = Math.max(maxWaveIntensity, intensity)
+
+      const blastRadius = buildBlastRadius(wave.roots, 2)
+
+      blastRadius.forEach((depth, serviceName) => {
+        const depthModifier = depth === 0 ? 1 : depth === 1 ? 0.66 : 0.42
+        const pressure = intensity * depthModifier
+        incidentPressure.set(serviceName, (incidentPressure.get(serviceName) || 0) + pressure)
+      })
+    })
+
+    const riskRanking = serviceNames
+      .map((name, index) => {
+        const fanOut = (dependencyMap[name] || []).length
+        const fanIn = (reverseDependencyMap[name] || []).length
+        const topologyPressure = (fanIn + fanOut) * 0.012
+        const cyclicalDrift = (((stepIndex + index) % 9) - 4) * 0.008
+        const baselineRisk = 0.12 + ((buildScore(name, index, stepIndex) % 100) / 100) * 0.44 + topologyPressure + cyclicalDrift
+
+        const propagatedPressure = incidentPressure.get(name) || 0
+        const neighbourPressure = (dependencyMap[name] || []).reduce((sum, downstream) => sum + (incidentPressure.get(downstream) || 0), 0)
+        const riskScore = clamp(baselineRisk + propagatedPressure + neighbourPressure * 0.14, 0.03, 0.99)
+
+        return { name, index, riskScore }
+      })
+      .sort((left, right) => right.riskScore - left.riskScore)
+
+    const criticalCount = Math.max(4, Math.min(10, 4 + Math.round(maxWaveIntensity * 7)))
+    const warningBoundary = Math.max(11, Math.min(20, criticalCount + 8 + Math.round(maxWaveIntensity * 4)))
+    const critical = new Set(riskRanking.slice(0, criticalCount).map((entry) => entry.name))
+    const warning = new Set(riskRanking.slice(criticalCount, warningBoundary).map((entry) => entry.name))
+    const riskByName = new Map(riskRanking.map((entry) => [entry.name, entry.riskScore]))
 
     const snapshot = serviceNames.map((name, index) => {
       const severity = critical.has(name) ? 'critical' : warning.has(name) ? 'warning' : 'healthy'
-      const severityBoost = severity === 'critical' ? 26 : severity === 'warning' ? 10 : -4
+      const fanOut = (dependencyMap[name] || []).length
+      const fanIn = (reverseDependencyMap[name] || []).length
+      const dependencyWeight = fanOut + fanIn
+      const propagatedPressure = incidentPressure.get(name) || 0
+      const severityBoost = severity === 'critical' ? 24 : severity === 'warning' ? 11 : -3
       const failureProbability = clamp(
-        (buildScore(name, index, stepIndex) % 100) / 100 + (severity === 'critical' ? 0.22 : severity === 'warning' ? 0.08 : -0.1),
+        (riskByName.get(name) || 0.08) + (severity === 'critical' ? 0.15 : severity === 'warning' ? 0.05 : -0.06),
         0.03,
-        0.98
+        0.99
       )
-      const cpu = buildMetric(34 + (index % 7) * 4 + stepIndex * 1.5, 24, stepIndex, index, severityBoost)
-      const memory = buildMetric(42 + (index % 5) * 5 + stepIndex, 20, stepIndex, index, severityBoost - 2)
+      const cpu = buildMetric(30 + dependencyWeight * 2.8 + stepIndex * 1.2 + propagatedPressure * 30, 26, stepIndex, index, severityBoost)
+      const memory = buildMetric(39 + dependencyWeight * 2.1 + stepIndex * 0.9 + propagatedPressure * 24, 22, stepIndex, index, severityBoost - 2)
       const latency = clamp(
-        82 + (index % 9) * 14 + stepIndex * 12 + (severity === 'critical' ? 210 : severity === 'warning' ? 90 : -10),
+        88 + dependencyWeight * 14 + stepIndex * 10 + propagatedPressure * 360 + (severity === 'critical' ? 180 : severity === 'warning' ? 70 : -8),
         18,
-        980
+        1200
       )
       const errorRate = clamp(
-        0.012 + ((index % 6) * 0.009) + (severity === 'critical' ? 0.135 : severity === 'warning' ? 0.045 : 0.004),
+        0.01 + (dependencyWeight % 7) * 0.008 + propagatedPressure * 0.18 + (severity === 'critical' ? 0.1 : severity === 'warning' ? 0.036 : 0.005),
         0.002,
         0.68
       )
+      const interactionBase = 130 + dependencyWeight * 30 + ((index * 37 + stepIndex * 17) % 470)
+      const interactionMultiplier = 1 + propagatedPressure * 1.1 + (severity === 'critical' ? 0.24 : severity === 'warning' ? 0.1 : 0)
 
       const entry = {
         id: `${name}-${label}`,
@@ -204,7 +332,7 @@ function createServiceSnapshots() {
         label,
         timestamp,
         status: severity,
-        interaction_count: 90 + ((index * 37 + stepIndex * 17) % 410),
+        interaction_count: Math.round(interactionBase * interactionMultiplier),
         metrics: {
           cpu: Number(cpu.toFixed(1)),
           memory: Number(memory.toFixed(1)),
@@ -263,7 +391,7 @@ function createServiceSnapshots() {
     frame.snapshot
       .filter((entry) => entry.status !== 'healthy')
       .sort((left, right) => right.metrics.failure_probability - left.metrics.failure_probability)
-      .slice(0, 8)
+      .slice(0, 12)
       .map((entry, itemIndex) => ({
         id: `${frame.label}-${entry.name}`,
         service: entry.name,
@@ -271,28 +399,33 @@ function createServiceSnapshots() {
         severity: entry.status === 'critical' ? 'high' : 'medium',
         timestamp: entry.timestamp,
         status: itemIndex === 0 && frameIndex % 2 === 0 ? 'open' : 'queued',
-        acknowledged: itemIndex > 3,
-        summary: `${entry.name} showed elevated ${entry.status === 'critical' ? 'failure' : 'degradation'} signals.`,
+        acknowledged: itemIndex > 6,
+        summary:
+          entry.status === 'critical'
+            ? `${entry.name} failure cascade detected. Upstream pressure from ${(entry.upstream || []).slice(0, 2).join(', ') || 'core services'} with downstream impact on ${(entry.downstream || []).slice(0, 2).join(', ') || 'shared dependencies'}.`
+            : `${entry.name} degradation signals increased under dependency load from ${(entry.upstream || []).slice(0, 2).join(', ') || 'adjacent services'}.`,
       }))
-  ).slice(0, 24)
+  )
+    .sort((left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime())
+    .slice(0, 72)
 
   const modelMetrics = {
-    recall: 0.57,
-    f1: 0.37,
-    precision: 0.25,
-    accuracy: 0.81,
+    recall: 0.72,
+    f1: 0.68,
+    precision: 0.64,
+    accuracy: 0.91,
     confusionMatrix: [
-      [128, 34],
-      [91, 44],
+      [178, 98],
+      [69, 1547],
     ],
     lossCurve: [1.24, 1.08, 0.96, 0.84, 0.77, 0.71, 0.69, 0.64, 0.61, 0.58],
     prTradeoff: [
-      { threshold: 0.15, precision: 0.17, recall: 0.86 },
-      { threshold: 0.25, precision: 0.22, recall: 0.74 },
-      { threshold: 0.35, precision: 0.25, recall: 0.57 },
-      { threshold: 0.45, precision: 0.31, recall: 0.46 },
-      { threshold: 0.55, precision: 0.39, recall: 0.34 },
-      { threshold: 0.65, precision: 0.47, recall: 0.22 },
+      { threshold: 0.15, precision: 0.52, recall: 0.84 },
+      { threshold: 0.25, precision: 0.58, recall: 0.78 },
+      { threshold: 0.35, precision: 0.64, recall: 0.72 },
+      { threshold: 0.45, precision: 0.69, recall: 0.63 },
+      { threshold: 0.55, precision: 0.74, recall: 0.54 },
+      { threshold: 0.65, precision: 0.79, recall: 0.44 },
     ],
   }
 
