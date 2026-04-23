@@ -63,3 +63,12 @@ logs/
 # Prisma local sqlite files (safe to regenerate)
 backend/prisma/*.db
 backend/prisma/*.db-journal
+
+# -----------------------------
+# Documentation files
+# -----------------------------
+# Ignore all markdown files by default
+**/*.md
+
+# Keep the main project readme in git
+!README.md

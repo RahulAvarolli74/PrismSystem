@@ -1,237 +1,184 @@
-# PRISM - Microservices Failure Prediction Engine
+# PRISM
 
-A production-grade real-time failure prediction system for microservices monitoring, powered by machine learning and distributed tracing.
+Real-time microservice observability platform with ML-powered anomaly detection and OpenTelemetry integration.
 
-## 🎯 Features
+**Tech Stack:** Node.js 20+ | Express.js | React 19 + TypeScript | PostgreSQL 16 | PyTorch | Docker
 
-### Core Capabilities
-- **Real-time Monitoring**: Live telemetry ingestion from microservices
-- **ML-Powered Predictions**: Predict service failures before they occur
-- **Dependency Mapping**: Visualize service dependencies and failure propagation
-- **Alert Management**: Real-time alerting with configurable thresholds
-- **Circuit Breaker Pattern**: Graceful degradation on external service failures
-- **Correlation Tracking**: Request tracing across distributed systems
-
-### Production Features
-- **Observability**: Prometheus metrics and Grafana dashboards
-- **Security**: Helmet security headers, CORS, rate limiting, input validation
-- **Resilience**: Retry logic with exponential backoff, circuit breakers
-- **Error Handling**: Global error boundaries and structured error responses
-- **Logging**: Structured logging with Winston and daily rotation
-- **Testing**: Unit tests, integration tests, E2E ready
-- **CI/CD**: GitHub Actions automation for testing and deployment
-
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                   PRISM Frontend                         │
-│         (React + Vite + Zustand + Recharts)             │
-│                                                          │
-│  • Error Boundaries  • Retry Logic  • Real-time UI      │
-└─────────────────┬───────────────────────────────────────┘
-                  │ WebSocket / REST API
-┌─────────────────▼───────────────────────────────────────┐
-│                  PRISM Backend (Express.js)             │
-│  • Request Correlation  • Circuit Breaker               │
-│  • Rate Limiting  • Metrics Collection                  │
-│  • Graceful Shutdown  • WebSocket Server                │
-└─────────────────┬───────────────────────────────────────┘
-     ┌────────────┼────────────┐
-     │            │            │
-┌────▼──┐  ┌─────▼──┐  ┌─────▼──┐
-│ PostgreSQL │ Redis  │ ML Service
-│ Database  │ Cache  │ (Python)
-└───────┘  └────────┘  └────────┘
-
-Monitoring Stack:
-Prometheus ──► Grafana (Dashboards)
-     ▲
-     │
-Backend Metrics (/metrics endpoint)
-```
-
-## 📦 Tech Stack
-
-### Backend
-- **Runtime**: Node.js 20+
-- **Framework**: Express.js 4.x
-- **Database**: PostgreSQL 16 + Prisma ORM
-- **Cache**: Redis 7 (optional)
-- **Logging**: Winston 3.x
-- **Monitoring**: Prometheus client
-- **Message Queue**: Socket.io (real-time)
-
-### Frontend
-- **Runtime**: Node.js 20+
-- **Framework**: React 19 + TypeScript
-- **Build**: Vite 8.x
-- **State**: Zustand 5.x
-- **Charts**: Recharts 3.x
-- **Routing**: React Router 7.x
-- **Styling**: Tailwind CSS 4.x + PostCSS
-
-### DevOps
-- **Containerization**: Docker + Docker Compose
-- **Orchestration**: Kubernetes-ready
-- **CI/CD**: GitHub Actions
-- **Monitoring**: Prometheus + Grafana
+---
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- Node.js 20+
-- Docker & Docker Compose
-- PostgreSQL 16
-- Redis 7 (optional)
-
-### Local Development
-
-1. **Clone and Setup**
-```bash
-git clone <repo>
-cd PrismSystem
-cp .env.example .env
-```
-
-2. **Install Dependencies**
+### Development
 ```bash
 # Backend
-cd backend
-npm install
-npx prisma generate
-npx prisma migrate dev
-
-# Frontend
-cd ../frontend
-npm install
-```
-
-3. **Start Development Servers**
-```bash
-# Terminal 1: Backend
-cd backend
+cd backend && npm install && npm run prisma:generate && npm run prisma:push
 npm run dev
 
-# Terminal 2: Frontend
-cd frontend
-npm run dev
+# Frontend (new terminal)
+cd frontend && npm install && npm run dev
+
+# ML Service (new terminal)
+cd backend && python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt && python main.py
 ```
 
-Access the application at `http://localhost:3000`
+Backend: `http://localhost:3001`  
+Frontend: `http://localhost:5173`  
+ML Service: `http://localhost:8000`
 
-### Docker Deployment
+### Docker
+```bash
+docker compose build
+docker compose up -d
+```
+
+**Services:**
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:3001`
+- Prometheus: `http://localhost:9090`
+- Grafana: `http://localhost:3000` (admin/admin)
+- OTEL Collector: `:4317` (gRPC), `:4318` (HTTP)
+- PostgreSQL: `:5432`
+
+---
+
+## 📡 API Endpoints
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/health` | GET | Health check |
+| `/metrics` | GET | Prometheus metrics |
+| `/api/v1/telemetry` | POST | Ingest telemetry |
+| `/api/v1/telemetry` | GET | Query telemetry |
+| `/api/v1/predictions` | GET | List predictions |
+| `/api/v1/services` | GET | List services |
+| `/v1/traces` | POST | OTEL traces |
+| `/v1/metrics` | POST | OTEL metrics |
+| `/v1/logs` | POST | OTEL logs |
+
+---
+
+## 📤 Integrate Your Microservice
+
+### Node.js
+```bash
+npm install @opentelemetry/api @opentelemetry/sdk-node \
+  @opentelemetry/auto @opentelemetry/exporter-trace-otlp-http
+```
+
+```javascript
+const { NodeSDK } = require('@opentelemetry/sdk-node');
+const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http');
+
+const sdk = new NodeSDK({
+  traceExporter: new OTLPTraceExporter({
+    url: 'http://localhost:4318/v1/traces',
+  }),
+});
+sdk.start();
+```
+
+### Python
+```bash
+pip install opentelemetry-api opentelemetry-sdk \
+  opentelemetry-exporter-otlp-proto-http
+```
+
+```python
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+exporter = OTLPSpanExporter(endpoint="http://localhost:4318/v1/traces")
+trace_provider = TracerProvider()
+trace_provider.add_span_processor(BatchSpanProcessor(exporter))
+```
+
+### Java
+```gradle
+implementation 'io.opentelemetry:opentelemetry-exporter-otlp:1.32.0'
+```
+
+---
+
+## 🧪 Testing
 
 ```bash
-docker-compose up -d
+cd backend && npm test
+npm test -- --coverage
+npm run test:e2e
 ```
 
-Services:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:3001
-- Prometheus: http://localhost:9090
-- Grafana: http://localhost:3002 (admin/admin)
-- PostgreSQL: localhost:5432
+---
 
-### Backend (.env)
+## 📊 Key Metrics
 
+| Metric | Normal | Warning | Critical |
+|--------|--------|---------|----------|
+| CPU | <50% | 50-70% | >90% |
+| Memory | <60% | 60-75% | >95% |
+| Latency | <50ms | 50-200ms | >500ms |
+| Error Rate | <1% | 1-5% | >15% |
+
+---
+
+## 🔧 Configuration
+
+### Backend `.env`
 ```env
-# Server
 NODE_ENV=production
 PORT=3001
-
-# Database
 DATABASE_URL=postgresql://user:password@localhost:5432/prism_db
-
-# ML Service
 ML_SERVICE_URL=http://localhost:8000
-ML_SERVICE_TIMEOUT=10000
-ML_SERVICE_RETRIES=3
-
-# Logging
 LOG_LEVEL=info
-
-# CORS
 CORS_ORIGIN=https://yourdomain.com
-
-# Rate Limiting
-RATE_LIMIT_WINDOW_MS=900000  # 15 minutes
+RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX_REQUESTS=100
-
-# WebSocket
-WS_PING_INTERVAL=25000
-WS_PING_TIMEOUT=20000
 ```
 
-### Frontend (.env.local)
-
+### Frontend `.env.local`
 ```env
 VITE_API_BASE_URL=https://api.yourdomain.com/api/v1
 ```
 
-## 🔌 API Endpoints
+---
 
-### Dashboard
-- `GET /api/v1/dashboard/summary` - System overview
-- `GET /api/v1/services` - List all services
-- `GET /api/v1/service/:name` - Service details
-- `GET /api/v1/services/dependencies` - Dependency graph
+## 📚 Documentation
 
-### Telemetry
-- `POST /api/v1/telemetry` - Ingest telemetry
-- `GET /api/v1/telemetry` - Query telemetry (paginated)
+- **[QUICK_START.md](QUICK_START.md)** - 5-minute setup & integration
+- **[SYSTEM_WALKTHROUGH.md](SYSTEM_WALKTHROUGH.md)** - Complete data flow
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System design
+- **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** - Commands cheatsheet
 
-### Predictions
-- `GET /api/v1/predictions` - List predictions
-- `POST /api/v1/predictions` - Generate prediction
+---
 
-### Health & Monitoring
-- `GET /health` - Health check
-- `GET /metrics` - Prometheus metrics
+## 📦 Stack
 
-## 🧪 Testing
+**Backend:** Express.js | PostgreSQL + Prisma | Winston | Prometheus  
+**Frontend:** React 19 | Vite | TypeScript | Zustand  
+**ML:** Python 3.11 | FastAPI | PyTorch 2.5+  
+**DevOps:** Docker Compose | OTEL Collector | Kubernetes-ready  
 
-### Backend Unit Tests
+---
+
+## 🧹 Cleanup
+
 ```bash
-cd backend
-npm test
-npm test -- --coverage
+# Stop services
+docker compose down
+
+# Reset database
+docker compose down -v
+
+# View logs
+docker compose logs -f backend
 ```
 
-### Backend E2E Tests
-```bash
-npm run test:e2e
-```
+---
 
-### Frontend Tests (Coming Soon)
-```bash
-cd frontend
-npm test
-```
+## 📄 License
 
-## 📊 Monitoring
-
-### Prometheus Metrics
-
-**HTTP Metrics:**
-- `http_requests_total` - Total requests by method, route, status
-- `http_request_duration_seconds` - Request latency histogram
-- `http_errors_total` - Total error requests
-
-**Database Metrics:**
-- `database_query_duration_seconds` - Query latency
-- `database_errors_total` - Database errors
-
-**Business Metrics:**
-- `telemetry_points_ingested_total` - Telemetry ingestion rate
-- `predictions_generated_total` - Prediction generation rate
-- `prediction_confidence` - Prediction confidence distribution
-- `circuit_breaker_state` - Circuit breaker status per service
-
-### Grafana Dashboards
-- System Health Dashboard
-- Service Metrics Dashboard
-- ML Prediction Dashboard
+MIT
 - Error Rate & Latency Dashboard
 
 ## 🔐 Security Features

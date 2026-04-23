@@ -6,6 +6,12 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+ARG VITE_API_BASE_URL=http://localhost:3001/api/v1
+ARG VITE_SOCKET_URL=http://localhost:3001
+
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+ENV VITE_SOCKET_URL=${VITE_SOCKET_URL}
+
 COPY package*.json ./
 RUN npm ci
 
@@ -33,7 +39,7 @@ USER nodejs
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+  CMD node -e "const http=require('http');const req=http.get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1);});req.on('error', () => process.exit(1));"
 
 CMD ["serve", "-s", "dist", "-l", "3000"]
 

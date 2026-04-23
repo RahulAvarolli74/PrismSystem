@@ -18,8 +18,6 @@ import {
 } from 'lucide-react'
 import TopNav from '../components/layout/TopNav'
 import GlassCard from '../components/ui/GlassCard'
-import StatusBadge from '../components/ui/StatusBadge'
-import { useOperationsData } from '../hooks/useOperationsData'
 
 const sectionMotion = {
   initial: { opacity: 0, y: 28 },
@@ -67,9 +65,6 @@ const pipeline = [
 ]
 
 export default function Landing() {
-  const { dashboardTrend, services, latestSnapshot } = useOperationsData()
-  const currentRisk = Math.round(dashboardTrend[dashboardTrend.length - 1]?.risk || 0)
-
   return (
     <div className="relative min-h-screen overflow-x-hidden pb-14 text-[var(--text-primary)]">
       <TopNav />
@@ -112,46 +107,9 @@ export default function Landing() {
                 </a>
               </div>
 
-              <div className="mt-10 grid gap-4 sm:grid-cols-3">
-              {dashboardTrend.slice(0, 3).map((entry) => (
-                  <GlassCard key={entry.label} className="glass-panel-strong rounded-[24px] p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--text-muted)]">{entry.label}</p>
-                    <div className="mt-2 font-mono text-3xl font-bold text-[var(--text-primary)]">{entry.risk}%</div>
-                    <p className="mt-1 text-sm text-[var(--text-secondary)]">avg risk frame</p>
-                  </GlassCard>
-                ))}
-              </div>
             </div>
 
             <div className="grid gap-4 lg:justify-self-end">
-              <GlassCard className="rounded-[30px] border border-[rgba(255,255,255,0.08)] p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--text-muted)]">Live posture</p>
-                    <p className="mt-2 text-lg font-semibold text-[var(--text-primary)]">Prediction pressure</p>
-                  </div>
-                  <StatusBadge status={currentRisk >= 60 ? 'critical' : currentRisk >= 35 ? 'warning' : 'healthy'} />
-                </div>
-                <div className="mt-6 grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl border border-[var(--border-subtle)] bg-[rgba(255,255,255,0.03)] p-4">
-                    <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">Services</p>
-                    <p className="mt-2 font-mono text-3xl font-bold text-[var(--text-primary)]">{services.length}</p>
-                  </div>
-                  <div className="rounded-2xl border border-[var(--border-subtle)] bg-[rgba(255,255,255,0.03)] p-4">
-                    <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">Sequences</p>
-                    <p className="mt-2 font-mono text-3xl font-bold text-[var(--text-primary)]">{latestSnapshot.length}</p>
-                  </div>
-                  <div className="rounded-2xl border border-[var(--border-subtle)] bg-[rgba(255,255,255,0.03)] p-4">
-                    <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">Recall</p>
-                    <p className="mt-2 font-mono text-3xl font-bold text-[var(--text-primary)]">0.57</p>
-                  </div>
-                  <div className="rounded-2xl border border-[var(--border-subtle)] bg-[rgba(255,255,255,0.03)] p-4">
-                    <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">Realtime</p>
-                    <p className="mt-2 font-mono text-3xl font-bold text-[var(--text-primary)]">Yes</p>
-                  </div>
-                </div>
-              </GlassCard>
-
               <GlassCard className="rounded-[30px] p-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--text-muted)]">Model stack</p>
                 <div className="mt-4 grid grid-cols-2 gap-3">
@@ -213,60 +171,83 @@ export default function Landing() {
           </GlassCard>
         </motion.section>
 
-        <motion.section {...sectionMotion} className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]" id="architecture">
-          <GlassCard className="rounded-[32px] p-6 lg:p-8">
+        <motion.section {...sectionMotion} className="grid gap-6" id="architecture">
+          <GlassCard className="rounded-[32px] p-6 lg:p-10">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--text-muted)]">Architecture overview</p>
-            <div className="mt-6 rounded-[28px] border border-[var(--border-subtle)] bg-[rgba(255,255,255,0.03)] p-4">
-              <svg viewBox="0 0 760 260" className="h-auto w-full">
-                <defs>
-                  <linearGradient id="pipe" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0%" stopColor="#f97316" stopOpacity="0.9" />
-                    <stop offset="100%" stopColor="#ff3b5c" stopOpacity="0.9" />
-                  </linearGradient>
-                </defs>
-                <g fill="none" stroke="url(#pipe)" strokeWidth="4" strokeLinecap="round">
-                  <path d="M 80 130 L 170 130" />
-                  <path d="M 260 130 L 350 130" />
-                  <path d="M 440 130 L 530 130" />
-                  <path d="M 620 130 L 710 130" />
-                </g>
+            <div className="mt-6 rounded-[28px] border border-[var(--border-subtle)] bg-[rgba(255,255,255,0.03)] p-6 lg:p-8">
+              <div className="mx-auto grid max-w-[1320px] gap-4 md:grid-cols-3">
                 {[
-                  ['Logs', 30],
-                  ['Metrics', 30],
-                  ['Traces', 30],
-                  ['Feature Eng', 215],
-                  ['Graph', 395],
-                  ['GATv2', 570],
-                  ['BiLSTM', 570],
-                  ['Prediction', 650],
-                ].map(([label, x], index) => (
-                  <g key={label} transform={`translate(${x} ${index < 3 ? 52 : 166})`}>
-                    <rect width="120" height="56" rx="18" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" />
-                    <text x="60" y="34" textAnchor="middle" fill="currentColor" fontSize="16" fontFamily="var(--font-display)">{label}</text>
-                  </g>
+                  { label: 'Logs stream', icon: MessagesSquare, note: 'structured + unstructured logs' },
+                  { label: 'Metrics stream', icon: LineChart, note: 'latency, CPU, memory, errors' },
+                  { label: 'Trace stream', icon: Radar, note: 'service hop and span behavior' },
+                ].map(({ label, icon: Icon, note }) => (
+                  <div key={label} className="h-full rounded-[22px] border border-[var(--border-subtle)] bg-[rgba(255,255,255,0.04)] p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[rgba(255,255,255,0.03)] text-[var(--accent)]">
+                        <Icon size={16} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-[var(--text-primary)]">{label}</p>
+                        <p className="text-xs text-[var(--text-muted)]">{note}</p>
+                      </div>
+                    </div>
+                  </div>
                 ))}
-              </svg>
+              </div>
+
+              <div className="mx-auto mt-6 hidden max-w-[1320px] items-center gap-3 lg:grid lg:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr]">
+                {[
+                  'Feature Engineering',
+                  'Dependency Graph',
+                  'GATv2 + BiLSTM',
+                  'Failure Prediction',
+                ].map((stage, index, stages) => (
+                  <React.Fragment key={stage}>
+                    <div className="rounded-[22px] border border-[var(--border-subtle)] bg-[rgba(255,255,255,0.04)] p-4 text-center">
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Stage {index + 1}</p>
+                      <p className="mt-2 text-lg font-semibold text-[var(--text-primary)]">{stage}</p>
+                    </div>
+                    {index < stages.length - 1 ? (
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[rgba(255,255,255,0.03)] text-[var(--accent)]">
+                        <ArrowRight size={16} />
+                      </div>
+                    ) : null}
+                  </React.Fragment>
+                ))}
+              </div>
+
+              <div className="mx-auto mt-6 grid max-w-[740px] gap-3 lg:hidden">
+                {[
+                  'Feature Engineering',
+                  'Dependency Graph',
+                  'GATv2 + BiLSTM',
+                  'Failure Prediction',
+                ].map((stage, index) => (
+                  <div key={stage} className="rounded-[22px] border border-[var(--border-subtle)] bg-[rgba(255,255,255,0.04)] p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Stage {index + 1}</p>
+                    <p className="mt-1 text-base font-semibold text-[var(--text-primary)]">{stage}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mx-auto mt-6 max-w-[1320px] rounded-[18px] border border-[var(--border-subtle)] bg-[rgba(255,255,255,0.025)] p-4">
+                <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--text-secondary)]">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-subtle)] px-3 py-1.5">
+                    <CircleGauge size={14} className="text-[var(--warning)]" />
+                    <span>Real-time inference</span>
+                  </div>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-subtle)] px-3 py-1.5">
+                    <DatabaseZap size={14} className="text-[var(--accent)]" />
+                    <span>Streaming feature store</span>
+                  </div>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-subtle)] px-3 py-1.5">
+                    <Workflow size={14} className="text-[var(--success)]" />
+                    <span>Dependency-aware scoring</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </GlassCard>
-
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <GlassCard className="rounded-[30px] p-5">
-              <p className="text-xs uppercase tracking-[0.24em] text-[var(--text-muted)]">Services monitored</p>
-              <p className="mt-3 font-mono text-4xl font-bold text-[var(--text-primary)]">44</p>
-            </GlassCard>
-            <GlassCard className="rounded-[30px] p-5">
-              <p className="text-xs uppercase tracking-[0.24em] text-[var(--text-muted)]">Sequences</p>
-              <p className="mt-3 font-mono text-4xl font-bold text-[var(--text-primary)]">213</p>
-            </GlassCard>
-            <GlassCard className="rounded-[30px] p-5">
-              <p className="text-xs uppercase tracking-[0.24em] text-[var(--text-muted)]">Recall</p>
-              <p className="mt-3 font-mono text-4xl font-bold text-[var(--text-primary)]">0.57</p>
-            </GlassCard>
-            <GlassCard className="rounded-[30px] p-5">
-              <p className="text-xs uppercase tracking-[0.24em] text-[var(--text-muted)]">Real-time</p>
-              <p className="mt-3 font-mono text-4xl font-bold text-[var(--text-primary)]">Yes</p>
-            </GlassCard>
-          </div>
         </motion.section>
 
         <motion.section {...sectionMotion} className="grid gap-4 lg:grid-cols-3" id="stack">

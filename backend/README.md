@@ -199,6 +199,16 @@ Connect via Socket.IO to `ws://localhost:3001`
 | `subscribe_service` | Client → Server | Subscribe to service-specific events |
 | `unsubscribe_service` | Client → Server | Unsubscribe from service events |
 
+## 📡 OpenTelemetry Ingest
+
+The backend exposes standard OTLP HTTP endpoints mounted at `/v1`:
+
+- `POST /v1/traces`
+- `POST /v1/logs`
+- `POST /v1/metrics`
+
+These endpoints accept OTLP JSON forwarded by the OpenTelemetry Collector, normalize the payload into the existing telemetry schema, store the raw data in PostgreSQL, and then run the prediction pipeline.
+
 ## 🧠 ML Service Integration
 
 The backend expects a Python FastAPI service at the configured `ML_SERVICE_URL`:

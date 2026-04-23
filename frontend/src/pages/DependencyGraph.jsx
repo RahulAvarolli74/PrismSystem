@@ -153,7 +153,7 @@ export default function DependencyGraph() {
   const selectedHistory = selectedService?.history || []
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="mx-auto max-w-[1520px] space-y-6 pb-8">
       <SectionHeader
         eyebrow="Topology"
         title="Service dependency graph"
@@ -172,7 +172,7 @@ export default function DependencyGraph() {
         }
       />
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center justify-center gap-3">
         <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[rgba(255,255,255,0.04)] px-4 py-2 text-sm text-[var(--text-secondary)]">
           <Filter size={14} />
           Filter graph
@@ -193,7 +193,7 @@ export default function DependencyGraph() {
         ))}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
+      <div className="mx-auto grid w-full max-w-[1500px] items-start gap-6 xl:grid-cols-[1.3fr_0.7fr]">
         <GlassCard className="rounded-[30px] p-4" contentClassName="h-full">
           <div className="mb-4 flex items-center justify-between gap-3 px-2 pt-2">
             <div>

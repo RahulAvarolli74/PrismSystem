@@ -127,4 +127,13 @@ const telemetryValidations = {
   ],
 };
 
+telemetryValidations.otel = [
+  body().custom((value) => {
+    if (!value || typeof value !== 'object') {
+      throw new Error('Request body must be an object');
+    }
+    return true;
+  }),
+];
+
 module.exports = telemetryValidations;

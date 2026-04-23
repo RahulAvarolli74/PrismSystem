@@ -16,6 +16,7 @@ const ApiError = require('./utils/ApiError');
 
 // Route imports
 const telemetryRoutes = require('./modules/telemetry/telemetry.routes');
+const otelRoutes = require('./modules/telemetry/otel.routes');
 const predictionRoutes = require('./modules/prediction/prediction.routes');
 const serviceRoutes = require('./modules/service/service.routes');
 const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
@@ -89,6 +90,7 @@ app.get('/health', (req, res) => {
 // ═══════════════════════════════════════════
 
 app.use('/api/v1/telemetry', telemetryRoutes);
+app.use('/v1', otelRoutes);
 app.use('/api/v1/predictions', predictionRoutes);
 app.use('/api/v1/services', serviceRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
