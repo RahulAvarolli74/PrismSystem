@@ -7,7 +7,7 @@ FROM node:20-alpine AS dependencies
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci
 
 # Stage 2: Build
 FROM node:20-alpine AS builder

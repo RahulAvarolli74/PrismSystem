@@ -12,27 +12,40 @@ const SERVICES = ['payment', 'user', 'order', 'inventory', 'notification'];
 /**
  * Generate mock telemetry (internal format)
  */
-function generateTelemetry() {
-  const service = SERVICES[Math.floor(Math.random() * SERVICES.length)];
-  const hasAnomaly = Math.random() < 0.15; // 15% anomaly chance
-  
+function generateTelemetry({ elapsedSeconds, fixedService, mode }) {
+  const service = fixedService || SERVICES[Math.floor(Math.random() * SERVICES.length)];
+
+  // For sequence-window ML models: first 5 minutes build context, 6th minute inject strong failures.
+  const minute = Math.floor(elapsedSeconds / 60) + 1;
+  const isWindowFailureMode = mode === 'window-failure';
+  const isFailureWave = isWindowFailureMode && minute >= 6;
+  const hasAnomaly = isFailureWave || (!isWindowFailureMode && Math.random() < 0.2);
+
+  const cpu = isFailureWave ? 96 + Math.random() * 4 : 35 + Math.random() * 45;
+  const memory = isFailureWave ? 95 + Math.random() * 5 : 40 + Math.random() * 35;
+  const latency = isFailureWave ? 700 + Math.random() * 500 : 35 + Math.random() * 120;
+  const errorRate = isFailureWave ? 0.2 + Math.random() * 0.25 : Math.random() * 0.03;
+
   return {
     service_name: service,
     timestamp: new Date().toISOString(),
     metrics: {
-      cpu_usage: Math.random() * (hasAnomaly ? 100 : 70),
-      memory_usage: Math.random() * (hasAnomaly ? 2000 : 1000),
-      latency_ms: Math.random() * (hasAnomaly ? 500 : 100) + 10,
-      error_rate: Math.random() * (hasAnomaly ? 0.2 : 0.01),
+      cpu,
+      memory,
+      latency,
+      error_rate: errorRate,
       request_count: Math.floor(Math.random() * 1000),
-      throughput: Math.floor(Math.random() * 5000)
+      throughput: Math.floor(Math.random() * 5000),
     },
     logs: [
-      `[${service}] Operation executed successfully`,
-      hasAnomaly ? `[${service}] WARNING: High latency detected` : null
+      `[${service}] INFO: Request handled`,
+      hasAnomaly ? `[${service}] CRITICAL: latency spike and error burst` : null,
     ].filter(Boolean),
-    trace_id: Math.random().toString(36).substr(2, 16),
-    span_depth: Math.floor(Math.random() * 5) + 1
+    trace: {
+      trace_id: Math.random().toString(36).slice(2, 18),
+      depth: Math.floor(Math.random() * 6) + 1,
+      parent_service: 'gateway',
+    },
   };
 }
 
@@ -67,15 +80,17 @@ async function sendTestData(data) {
 /**
  * Run continuous test
  */
-async function runTest(durationSeconds = 60, intervalMs = 3000) {
+async function runTest(durationSeconds = 60, intervalMs = 3000, fixedService = '', mode = 'mixed') {
   console.log(`
 ╔════════════════════════════════════════════════════════╗
 ║      PRISM Telemetry Test Data Generator               ║
 ╚════════════════════════════════════════════════════════╝
 
-📍 Backend URL: ${BACKEND_URL}
-⏱️  Duration: ${durationSeconds}s
-📊 Interval: ${intervalMs}ms
+Backend URL: ${BACKEND_URL}
+Duration: ${durationSeconds}s
+Interval: ${intervalMs}ms
+Service: ${fixedService || 'random'}
+Mode: ${mode}
   `);
 
   const startTime = Date.now();
@@ -97,13 +112,23 @@ async function runTest(durationSeconds = 60, intervalMs = 3000) {
     }
 
     try {
-      const telemetry = generateTelemetry();
+      const telemetry = generateTelemetry({
+        elapsedSeconds: elapsed,
+        fixedService,
+        mode,
+      });
       const result = await sendTestData(telemetry);
       
       if (result.status === 200 || result.status === 201) {
         sent++;
-        const anomaly = JSON.stringify(telemetry).includes('WARNING') ? '🔴' : '🟢';
-        console.log(`[${elapsed}s] ${anomaly} ${telemetry.service_name} - CPU: ${telemetry.metrics.cpu_usage.toFixed(1)}%`);
+        const anomaly = telemetry.metrics.error_rate >= 0.15 ? 'FAIL' : 'OK';
+        console.log(
+          `[${elapsed}s] ${anomaly} ${telemetry.service_name} ` +
+          `cpu=${telemetry.metrics.cpu.toFixed(1)} ` +
+          `mem=${telemetry.metrics.memory.toFixed(1)} ` +
+          `lat=${telemetry.metrics.latency.toFixed(1)} ` +
+          `err=${(telemetry.metrics.error_rate * 100).toFixed(1)}%`
+        );
       } else {
         errors++;
         console.log(`[${elapsed}s] ✗ Status ${result.status}`);
@@ -116,7 +141,9 @@ async function runTest(durationSeconds = 60, intervalMs = 3000) {
 }
 
 // Parse args
-const duration = parseInt(process.argv[2]) || 60;
-const interval = parseInt(process.argv[3]) || 3000;
+const duration = parseInt(process.argv[2], 10) || 60;
+const interval = parseInt(process.argv[3], 10) || 3000;
+const service = process.argv[4] || '';
+const mode = process.argv[5] || 'mixed';
 
-runTest(duration, interval).catch(console.error);
+runTest(duration, interval, service, mode).catch(console.error);
