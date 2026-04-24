@@ -69,6 +69,7 @@ backend/prisma/*.db-journal
 # -----------------------------
 # Ignore all markdown files by default
 **/*.md
+vit24cs04_docker.tar
 
 # Keep the main project readme in git
 !README.md

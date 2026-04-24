@@ -333,6 +333,7 @@ export function useOperationsData() {
   const predictions = useDashboardStore((state) => state.predictions)
   const dependencyGraph = useDashboardStore((state) => state.dependencyGraph)
   const serviceSnapshots = useDashboardStore((state) => state.serviceSnapshots)
+  const serviceDetails = useDashboardStore((state) => state.serviceDetails)
   const alerts = useDashboardStore((state) => state.alerts)
   const connectionStatus = useDashboardStore((state) => state.connectionStatus)
 
@@ -360,9 +361,22 @@ export function useOperationsData() {
     // Strict live mode: no mock fallback blending once live data exists.
     const dependencyMap = buildDependencyMap(dependencyGraph, {})
     const reverseDependencyMap = buildReverseDependencyMap(dependencyMap)
-    const liveSnapshots = serviceSnapshots.map((snapshot) => ({
-      detail: snapshot,
-    }))
+    const detailByName = new Map()
+
+    for (const snapshot of serviceSnapshots) {
+      if (snapshot?.name) {
+        detailByName.set(snapshot.name, snapshot)
+      }
+    }
+
+    for (const detailState of Object.values(serviceDetails || {})) {
+      const detail = detailState?.detail
+      if (detail?.name) {
+        detailByName.set(detail.name, detail)
+      }
+    }
+
+    const liveSnapshots = [...detailByName.values()].map((detail) => ({ detail }))
     const healthByName = new Map((summary?.serviceHealth || []).map((entry) => [entry.name, entry]))
 
     const liveServiceSeeds =
@@ -408,5 +422,5 @@ export function useOperationsData() {
       getServiceById: (id) => liveServices.find((service) => service.id === id || service.name === id) || null,
       getStatusLabel: (status) => getMockStatusLabel(status),
     }
-  }, [alerts, connectionStatus, dependencyGraph, predictions, serviceSnapshots, services, summary])
+  }, [alerts, connectionStatus, dependencyGraph, predictions, serviceDetails, serviceSnapshots, services, summary])
 }

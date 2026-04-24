@@ -69,6 +69,7 @@ const shouldSkipRateLimit = (req) => {
     requestPath.startsWith('/api/v1/telemetry') ||
     requestPath.startsWith('/api/v1/dashboard') ||
     requestPath.startsWith('/api/v1/services') ||
+    requestPath.startsWith('/api/v1/service') ||
     requestPath.startsWith('/api/v1/predictions')
   );
 };

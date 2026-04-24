@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Activity, Cpu, MemoryStick, TriangleAlert, Waves } from 'lucide-react'
 import GlassCard from '../components/ui/GlassCard'
@@ -8,16 +8,34 @@ import MetricCard from '../components/ui/MetricCard'
 import MiniTrendChart from '../components/charts/MiniTrendChart'
 import { useOperationsData } from '../hooks/useOperationsData'
 import { formatDateTime } from '../utils/formatters'
+import { useDashboardStore } from '../store/useDashboardStore'
 
 export default function ServiceDetails() {
   const { id = '' } = useParams()
+  const serviceId = decodeURIComponent(id)
   const navigate = useNavigate()
   const { getServiceById, alerts } = useOperationsData()
-  const service = getServiceById(decodeURIComponent(id))
+  const setSelectedServiceName = useDashboardStore((state) => state.setSelectedServiceName)
+  const clearSelectedServiceName = useDashboardStore((state) => state.clearSelectedServiceName)
+  const refreshServiceDetail = useDashboardStore((state) => state.refreshServiceDetail)
+  const service = getServiceById(serviceId)
+
+  useEffect(() => {
+    if (!serviceId) {
+      return undefined
+    }
+
+    setSelectedServiceName(serviceId)
+    refreshServiceDetail(serviceId)
+
+    return () => {
+      clearSelectedServiceName()
+    }
+  }, [clearSelectedServiceName, refreshServiceDetail, serviceId, setSelectedServiceName])
 
   const recentAlerts = useMemo(
-    () => alerts.filter((alert) => alert.service === decodeURIComponent(id)).slice(0, 5),
-    [alerts, id]
+    () => alerts.filter((alert) => alert.service === serviceId).slice(0, 5),
+    [alerts, serviceId]
   )
 
   if (!service) {
