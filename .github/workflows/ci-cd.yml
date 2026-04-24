@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+# 1. ADDED PERMISSIONS: Required for uploading security results to the Security tab
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
 jobs:
   # ═══════════════════════════════════════════════════
   # BACKEND TESTS
@@ -29,10 +35,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # UPDATED: v3 -> v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4 # UPDATED: v3 -> v4
         with:
           node-version: '20'
           cache: 'npm'
@@ -65,10 +71,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # UPDATED: v3 -> v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4 # UPDATED: v3 -> v4
         with:
           node-version: '20'
           cache: 'npm'
@@ -96,13 +102,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # UPDATED: v3 -> v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3 # UPDATED: v2 -> v3
 
       - name: Build backend image
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5 # UPDATED: v4 -> v5
         with:
           context: backend
           file: backend/Dockerfile
@@ -110,7 +116,7 @@ jobs:
           tags: prism-backend:latest
 
       - name: Build frontend image
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5 # UPDATED: v4 -> v5
         with:
           context: frontend
           file: frontend/Dockerfile
@@ -122,10 +128,13 @@ jobs:
   # ═══════════════════════════════════════════════════
   security:
     runs-on: ubuntu-latest
+    # Explicitly adding permissions here as well to be safe
+    permissions:
+      security-events: write
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # UPDATED: v3 -> v4
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
@@ -136,13 +145,13 @@ jobs:
           output: 'trivy-results.sarif'
 
       - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3 # UPDATED: v2 -> v3
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
 
       - name: Setup Node.js for dependency check
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4 # UPDATED: v3 -> v4
         with:
           node-version: '20'
 
