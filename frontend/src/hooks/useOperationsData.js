@@ -56,6 +56,47 @@ function toNumber(value, fallback = 0) {
   return Number.isFinite(numeric) ? numeric : fallback
 }
 
+function normalizeAlertSeverity(alert = {}) {
+  const raw = String(alert.severity || alert.level || '').toLowerCase()
+
+  if (raw === 'high' || raw === 'critical' || raw === 'fatal') {
+    return 'high'
+  }
+
+  if (raw === 'medium' || raw === 'warning' || raw === 'warn') {
+    return 'medium'
+  }
+
+  return 'low'
+}
+
+function normalizeAlertStatus(alert = {}) {
+  const raw = String(alert.status || '').toLowerCase()
+
+  if (raw === 'dismissed' || raw === 'acknowledged' || raw === 'queued') {
+    return raw
+  }
+
+  return 'open'
+}
+
+function normalizeAlert(alert = {}) {
+  const serviceName = alert.service || alert.serviceName || alert.affectedNode || 'unknown-service'
+  const risk = toNumber(alert.risk ?? alert.confidence ?? alert.failureProbability ?? alert.probability, 0)
+
+  return {
+    ...alert,
+    id: alert.id || alert.predictionId || `${serviceName}-${alert.timestamp || alert.createdAt || Date.now()}`,
+    service: serviceName,
+    risk,
+    severity: normalizeAlertSeverity(alert),
+    status: normalizeAlertStatus(alert),
+    timestamp: alert.timestamp || alert.createdAt || new Date().toISOString(),
+    acknowledged: Boolean(alert.acknowledged),
+    summary: alert.summary || alert.message || alert.rootCause || `${serviceName} raised an alert.`,
+  }
+}
+
 function buildHistoryFromTelemetry(telemetry = [], labelPrefix = 't') {
   if (!Array.isArray(telemetry) || telemetry.length === 0) {
     return []
@@ -236,7 +277,7 @@ function buildDashboardTrend(timeline = []) {
 
 function buildAlerts(summary, liveAlerts, services) {
   const summaryAlerts = Array.isArray(summary?.recentFailures)
-    ? summary.recentFailures.map((item) => ({
+    ? summary.recentFailures.map((item) => normalizeAlert({
         id: item.id,
         service: item.service,
         risk: item.confidence,
@@ -248,7 +289,7 @@ function buildAlerts(summary, liveAlerts, services) {
       }))
     : []
 
-  const socketAlerts = Array.isArray(liveAlerts) ? liveAlerts : []
+  const socketAlerts = Array.isArray(liveAlerts) ? liveAlerts.map((alert) => normalizeAlert(alert)) : []
 
   if (summaryAlerts.length > 0 || socketAlerts.length > 0) {
     return [...socketAlerts, ...summaryAlerts].slice(0, 24)
@@ -257,7 +298,7 @@ function buildAlerts(summary, liveAlerts, services) {
   return services
     .filter((service) => service.status !== 'healthy')
     .slice(0, 8)
-    .map((service, index) => ({
+    .map((service, index) => normalizeAlert({
       id: `${service.id}-${index}`,
       service: service.name,
       risk: service.failure_probability,

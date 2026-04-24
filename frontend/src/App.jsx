@@ -6,10 +6,10 @@ import AppShell from './components/layout/AppShell'
 import PageFallback from './components/ui/PageFallback'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useLocation } from 'react-router-dom'
+import DependencyGraphPage from './pages/DependencyGraph'
 
 const LandingPage = lazy(() => import('./pages/Landing'))
 const DashboardPage = lazy(() => import('./pages/Dashboard'))
-const DependencyGraphPage = lazy(() => import('./pages/DependencyGraph'))
 const AlertsPage = lazy(() => import('./pages/Alerts'))
 const MetricsPage = lazy(() => import('./pages/Metrics'))
 const TimelinePage = lazy(() => import('./pages/Timeline'))

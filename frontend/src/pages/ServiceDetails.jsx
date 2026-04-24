@@ -139,7 +139,7 @@ export default function ServiceDetails() {
             {recentAlerts.length ? recentAlerts.map((alert) => (
               <div key={alert.id} className="rounded-[22px] border border-[var(--border-subtle)] bg-[rgba(255,255,255,0.03)] p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <StatusBadge status={alert.status === 'open' ? 'critical' : 'healthy'} label={alert.severity.toUpperCase()} />
+                  <StatusBadge status={alert.status === 'open' ? 'critical' : 'healthy'} label={String(alert.severity || 'low').toUpperCase()} />
                   <div className="text-xs text-[var(--text-muted)]">{formatDateTime(alert.timestamp)}</div>
                 </div>
                 <p className="mt-3 text-sm leading-7 text-[var(--text-secondary)]">{alert.summary}</p>

@@ -80,10 +80,10 @@ export default function Alerts() {
               {filteredRows.map((row) => (
                 <tr key={row.id} style={{ backgroundColor: severityColors[row.severity] || 'rgba(255,255,255,0.01)' }}>
                   <td className="px-4 py-4 text-sm font-semibold text-[var(--text-primary)]">{row.service}</td>
-                  <td className="px-4 py-4 font-mono text-sm text-[var(--text-secondary)]">{Math.round(row.risk * 100)}%</td>
-                  <td className="px-4 py-4 text-sm text-[var(--text-secondary)]">{row.severity.toUpperCase()}</td>
+                  <td className="px-4 py-4 font-mono text-sm text-[var(--text-secondary)]">{Math.round((Number.isFinite(Number(row.risk)) ? Number(row.risk) : 0) * 100)}%</td>
+                  <td className="px-4 py-4 text-sm text-[var(--text-secondary)]">{String(row.severity || 'low').toUpperCase()}</td>
                   <td className="px-4 py-4 text-sm text-[var(--text-secondary)]">{formatDateTime(row.timestamp)}</td>
-                  <td className="px-4 py-4"><StatusBadge status={row.status === 'open' ? 'critical' : 'healthy'} label={row.status.toUpperCase()} /></td>
+                  <td className="px-4 py-4"><StatusBadge status={row.status === 'open' ? 'critical' : 'healthy'} label={String(row.status || 'open').toUpperCase()} /></td>
                   <td className="px-4 py-4">
                     <div className="flex flex-wrap gap-2">
                       <button

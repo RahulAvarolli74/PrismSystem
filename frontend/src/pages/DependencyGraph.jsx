@@ -8,6 +8,7 @@ import MiniTrendChart from '../components/charts/MiniTrendChart'
 import { Link } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { useOperationsData } from '../hooks/useOperationsData'
+import { getServiceDetail } from '../services/api'
 
 function buildPositions(services) {
   const ordered = [...services].sort((left, right) => right.failure_probability - left.failure_probability)
@@ -18,6 +19,22 @@ function buildPositions(services) {
   }))
 }
 
+function toNumber(value, fallback = 0) {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric : fallback
+}
+
+function pickMetric(metrics = {}, keys = [], fallback = 0) {
+  for (const key of keys) {
+    const numeric = Number(metrics?.[key])
+    if (Number.isFinite(numeric)) {
+      return numeric
+    }
+  }
+
+  return fallback
+}
+
 export default function DependencyGraph() {
   const { services, dependencyMap, getServiceById } = useOperationsData()
   const containerRef = useRef(null)
@@ -25,6 +42,7 @@ export default function DependencyGraph() {
   const { theme } = useTheme()
   const [filter, setFilter] = useState('all')
   const [selectedId, setSelectedId] = useState(services.find((service) => service.status !== 'healthy')?.id || services[0]?.id || '')
+  const [selectedServiceDetail, setSelectedServiceDetail] = useState(null)
 
   const visibleServices = useMemo(() => {
     if (filter === 'failures') {
@@ -39,9 +57,95 @@ export default function DependencyGraph() {
   }, [filter, services])
 
   const selectedService = getServiceById(selectedId) || visibleServices[0]
-  const roundedSelectedCpu = Number(selectedService?.cpu || 0).toFixed(1)
-  const roundedSelectedMemory = Number(selectedService?.memory || 0).toFixed(1)
-  const roundedSelectedLatency = Math.round(Number(selectedService?.latency || 0))
+
+  useEffect(() => {
+    let active = true
+
+    if (!selectedService?.name) {
+      setSelectedServiceDetail(null)
+      return () => {
+        active = false
+      }
+    }
+
+    getServiceDetail(selectedService.name)
+      .then((response) => {
+        if (active) {
+          setSelectedServiceDetail(response.data || null)
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setSelectedServiceDetail(null)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [selectedService?.name])
+
+  const selectedHistory = useMemo(() => {
+    const detailTelemetry = Array.isArray(selectedServiceDetail?.recentTelemetry) ? selectedServiceDetail.recentTelemetry : []
+    const baselineRisk = toNumber(selectedService?.failure_probability, 0)
+
+    // Prefer fetched detail telemetry; fall back to mock history
+    if (detailTelemetry.length > 0) {
+      return detailTelemetry
+        .slice()
+        .reverse()
+        .map((entry, index) => {
+          const metrics = entry?.metrics || {}
+          return {
+            label: `t${index + 1}`,
+            metrics: {
+              cpu: pickMetric(metrics, ['cpu', 'cpu_usage', 'cpuUsage'], 0),
+              memory: pickMetric(metrics, ['memory', 'memory_usage', 'memoryUsage'], 0),
+              latency: pickMetric(metrics, ['latency', 'latency_ms', 'response_time', 'responseTime'], 0),
+              failure_probability: toNumber(entry?.latestPrediction?.confidence, baselineRisk),
+            },
+          }
+        })
+    }
+
+    // Fallback to mock history (already has metrics structure)
+    const mockHistory = selectedService?.history || []
+    return mockHistory.map((entry, index) => ({
+      label: entry.label || `t${index + 1}`,
+      metrics: {
+        cpu: toNumber(entry?.metrics?.cpu, 0),
+        memory: toNumber(entry?.metrics?.memory, 0),
+        latency: toNumber(entry?.metrics?.latency, 0),
+        failure_probability: toNumber(entry?.metrics?.failure_probability, baselineRisk),
+      },
+    }))
+  }, [selectedService?.failure_probability, selectedService?.history, selectedServiceDetail?.recentTelemetry])
+
+  const latestHistoryPoint = selectedHistory[selectedHistory.length - 1]
+
+  const roundedSelectedCpu = Number(
+    pickMetric(
+      latestHistoryPoint?.metrics,
+      ['cpu', 'cpu_usage', 'cpuUsage'],
+      toNumber(selectedService?.cpu, 0)
+    )
+  ).toFixed(1)
+
+  const roundedSelectedMemory = Number(
+    pickMetric(
+      latestHistoryPoint?.metrics,
+      ['memory', 'memory_usage', 'memoryUsage'],
+      toNumber(selectedService?.memory, 0)
+    )
+  ).toFixed(1)
+
+  const roundedSelectedLatency = Math.round(
+    pickMetric(
+      latestHistoryPoint?.metrics,
+      ['latency', 'latency_ms', 'response_time', 'responseTime'],
+      toNumber(selectedService?.latency, 0)
+    )
+  )
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -153,8 +257,6 @@ export default function DependencyGraph() {
     }
   }, [visibleServices, theme])
 
-  const selectedHistory = selectedService?.history || []
-
   return (
     <div className="mx-auto max-w-[1520px] space-y-6 pb-8">
       <SectionHeader
@@ -234,8 +336,8 @@ export default function DependencyGraph() {
           </GlassCard>
 
           <GlassCard className="rounded-[30px] p-6" contentClassName="space-y-4">
-            <MiniTrendChart title="Failure probability" value={Math.round((selectedService?.failure_probability || 0) * 100)} data={selectedHistory.map((entry) => ({ label: entry.label, value: Math.round(entry.metrics.failure_probability * 100) }))} dataKey="value" color="#ff3b5c" unit="%" />
-            <MiniTrendChart title="Latency" value={roundedSelectedLatency} data={selectedHistory.map((entry) => ({ label: entry.label, value: Math.round(Number(entry.metrics.latency || 0)) }))} dataKey="value" color="#f97316" unit=" ms" />
+            <MiniTrendChart title="Failure probability" value={Math.round((selectedService?.failure_probability || 0) * 100)} data={selectedHistory.map((entry, index) => ({ label: entry.label || `t${index + 1}`, value: Math.round(toNumber(entry?.metrics?.failure_probability, toNumber(selectedService?.failure_probability, 0)) * 100) }))} dataKey="value" color="#ff3b5c" unit="%" />
+            <MiniTrendChart title="Latency" value={roundedSelectedLatency} data={selectedHistory.map((entry, index) => ({ label: entry.label || `t${index + 1}`, value: Math.round(toNumber(entry?.metrics?.latency, 0)) }))} dataKey="value" color="#f97316" unit=" ms" />
           </GlassCard>
 
           <GlassCard className="rounded-[30px] p-6" contentClassName="space-y-4">
